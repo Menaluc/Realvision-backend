@@ -1,4 +1,4 @@
-﻿# Realvision-backend
+﻿# Realvision Deepfake Detection Backend
  
 Backend API for the RealVision project.
 This service is being built to allow video upload and prediction of whether a video is real or fake using a deep learning model.
@@ -17,13 +17,15 @@ This service is being built to allow video upload and prediction of whether a vi
 npm install
 node src/server.js
 
-## Current Progress
+## Current Functionality
 - Express backend setup
 - REST API structure
 - Video upload endpoint with Multer
 - Temporary file storage in `uploads/`
 
-## Next Steps
-- File validation (type and size)
-- Python inference integration
+## Planned Improvements
+- File validation by type and size
+- Integration with Python inference pipeline
 - Temporary file cleanup after processing
+- Return prediction result and confidence score
+
