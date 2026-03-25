@@ -1,6 +1,8 @@
 const express = require('express') // import
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const { runInference } = require('../services/inference.service');
 const router = express.Router() // creat router
 
 // Where to save the uploaded file
@@ -39,7 +41,7 @@ const upload = multer({
 
 // Upload endpoint for video prediction input
 router.post("/predict", (req, res) => {
-    upload.single('video')(req, res, function (err) {
+    upload.single('video')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             console.log(err);
             return res.status(400).json({
@@ -61,14 +63,27 @@ router.post("/predict", (req, res) => {
             })
         }
 
-        // Return uploaded file details as a temporary success response
-        return res.status(200).json({
-            message: 'Upload successful',
-            originalname: req.file.originalname,
-            filename: req.file.filename,
-            path: req.file.path,
-            size: req.file.size
-        });
+        const videoPath = req.file.path;
+
+        try {
+            const inferenceResult = await runInference(videoPath);
+            return res.status(200).json({
+                message: 'Prediction successful',
+                prediction: inferenceResult.prediction,
+                confidence: inferenceResult.confidence,
+            });
+        } catch (e) {
+            return res.status(500).json({
+                message: 'Inference failed',
+                prediction: null,
+                confidence: null,
+            });
+        } finally {
+            // Temporary cleanup after inference (success or failure).
+            fs.unlink(videoPath, (unlinkErr) => {
+                if (unlinkErr) console.error('Failed to delete temp file:', unlinkErr.message);
+            });
+        }
     });
 });
 

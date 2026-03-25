@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RealVision Backend API - Demo</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 32px 16px;
+        color: #111;
+        background: #f6f7fb;
+      }
+
+      .container {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.2px;
+      }
+
+      .subtitle {
+        margin-top: 8px;
+        color: #4b5563;
+        font-size: 14px;
+      }
+
+      .card {
+        margin-top: 16px;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 6px 22px rgba(17, 24, 39, 0.05);
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 12px 0 8px;
+        color: #111827;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      button {
+        margin-top: 14px;
+        padding: 10px 14px;
+        border: 1px solid #0f172a;
+        background: #0f172a;
+        color: #fff;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 700;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      button:not(:disabled):hover {
+        background: #111827;
+      }
+
+      .status {
+        margin-top: 12px;
+        padding: 12px 12px;
+        border-radius: 12px;
+        background: #f3f4f6;
+        display: none;
+      }
+
+      .status strong {
+        font-weight: 800;
+      }
+
+      .error {
+        background: #ffecec;
+        border: 1px solid #ffb3b3;
+      }
+
+      .result {
+        background: #e9ffef;
+        border: 1px solid #a6f4b5;
+      }
+
+      .muted {
+        color: #444;
+        font-size: 14px;
+      }
+
+      .debug {
+        margin-top: 10px;
+        color: #6b7280;
+        font-size: 13px;
+      }
+
+      .row {
+        display: flex;
+        gap: 16px;
+        margin-top: 8px;
+      }
+
+      @media (max-width: 520px) {
+        .row {
+          flex-direction: column;
+          gap: 10px;
+        }
+      }
+
+      .pill {
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #fff;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>RealVision Backend API - Demo</h1>
+      <div class="subtitle">Upload a video and get a mock “real/fake” prediction from the backend.</div>
+
+      <div class="card">
+        <form id="predictForm">
+          <label for="videoInput">Choose a video</label>
+          <input id="videoInput" name="video" type="file" accept="video/*" />
+          <button id="submitBtn" type="submit">Upload & Predict</button>
+        </form>
+
+        <div id="status" class="status"></div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById('predictForm');
+      const videoInput = document.getElementById('videoInput');
+      const submitBtn = document.getElementById('submitBtn');
+      const statusEl = document.getElementById('status');
+
+      function setStatus({ kind, message, prediction, confidence, debug }) {
+        statusEl.style.display = 'block';
+        statusEl.classList.remove('error', 'result');
+        if (kind) statusEl.classList.add(kind);
+
+        if (prediction !== undefined && confidence !== undefined) {
+          statusEl.innerHTML =
+            '<div>' +
+            '<strong>' + message + '</strong>' +
+            '</div>' +
+            '<div class="row">' +
+            '<div class="pill"><strong>Prediction:</strong> ' + prediction + '</div>' +
+            '<div class="pill"><strong>Confidence:</strong> ' + confidence + '</div>' +
+            '</div>' +
+            (debug ? '<div class="debug">Debug: ' + debug + '</div>' : '');
+        } else {
+          statusEl.textContent = message || '';
+          if (debug) {
+            statusEl.innerHTML = statusEl.innerHTML + '<div class="debug">Debug: ' + debug + '</div>';
+          }
+        }
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const file = videoInput.files && videoInput.files[0];
+        if (!file) {
+          setStatus({ kind: 'error', message: 'Please select a video file first.' });
+          return;
+        }
+
+        submitBtn.disabled = true;
+        setStatus({ kind: null, message: 'Loading... Please wait.' });
+
+        try {
+          const formData = new FormData();
+          // backend expects field name: "video"
+          formData.append('video', file);
+
+          const resp = await fetch('/api/predict', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await resp.json().catch(() => ({}));
+
+          if (!resp.ok) {
+            setStatus({
+              kind: 'error',
+              message: data.message || 'Upload/Inference failed.',
+              debug: data.debug,
+            });
+            return;
+          }
+
+          setStatus({
+            kind: 'result',
+            message: data.message || 'Prediction successful',
+            prediction: data.prediction,
+            confidence: data.confidence,
+          });
+        } catch (err) {
+          setStatus({
+            kind: 'error',
+            message: 'Request failed. Check your server logs and try again.',
+          });
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
+
